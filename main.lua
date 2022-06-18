@@ -1,6 +1,7 @@
 --config
 MinRange=10
 MargeDist=10
+MargeDistCoef=0.025
 MaxTGT=32
 HoldTick=180
 
@@ -30,7 +31,8 @@ pD={pN("GPS X horizontal offset (m)"),pN("GPS Y directional offset (m)"),pN("Alt
 delay=pN("Process Delay (tick)")
 Marge=property.getBool("Marge close targets")
 DAD=pN("Installation Posture")
-MaxHist=pN("Smoothing tick")
+tSm=pN("Smoothing tick")
+MaxHist=tSm+1
 RType=pN("Radar Type")
 if RType==0     then isSR,isTR=true,false
 elseif RType==1 then isSR,isTR=true,true
@@ -106,18 +108,14 @@ function PolToOrth(VP)
 end
 cID=1
 function RegisterTGT(tgtV)
-	tI(TGT,{tgtV})
-	tgtV[6]=cID
-	tI(TGTS,tgtV)
+	tI(TGT,{tgtV,ID=cID,S=tgtV})
 	if #TGT>MaxTGT then
 		tR(TGT,1)
-		tR(TGTS,1)
 	end
 	cID=cID+1
 end
 PTG={}
 TGT={}
-TGTS={}
 
 function onTick()
 	oB(31,isSR)
@@ -144,6 +142,7 @@ function onTick()
 			end
 			PTG[i][4]=delay
 			PTG[i][5]=true
+			PTG[i].d=dist
 		else
 			PTG[i]={0,0,0,-1,false,-1}
 		end
@@ -152,7 +151,7 @@ function onTick()
 	if Marge then
 		for i=8,2,-1 do
 		for k=i-1,1,-1 do
-			if PTG[i][5] and PTG[k][5] and distV(PTG[i],PTG[k])<MargeDist then
+			if PTG[i][5] and PTG[k][5] and distV(PTG[i],PTG[k])<m.max(MargeDist,PTG[i].d*MargeDistCoef) then
 				for j=1,3 do
 					PTG[k][j]=(PTG[k][j]+PTG[i][j])/2
 				end
@@ -166,15 +165,14 @@ function onTick()
 	for i=1,8 do
 		if PTG[i][5] then
 			if #TGT>0 then
-				dist,km=distV(PTG[i],TGT[1][1]),1
 				for k=1,#TGT do
 					distk=distV(PTG[i],TGT[k][1])
-					if distk<dist then
+					if k==1 or distk<dist then
 						dist=distk
 						km=k
 					end
 				end
-				if dist<MargeDist then
+				if dist<m.max(MargeDist,PTG[i].d*MargeDistCoef) then
 					tI(TGT[km],1,PTG[i])
 					if #TGT[km]>MaxHist then tR(TGT[km]) end
 					for j=1,3 do
@@ -188,66 +186,72 @@ function onTick()
 								cmax=cl
 							end
 						end
-						TGTS[km][j]=(cmin+cmax)/2
+						TGT[km].S[j]=(cmin+cmax)/2
 					end
-					TGTS[km][4]=PTG[i][4]
-					PTG[i][6]=TGTS[km][6]
+					TGT[km].S[4]=PTG[i][4]
+					PTG[i][6]=TGT[km].ID
 				else
+					PTG[i][6]=cID
 					RegisterTGT(PTG[i])
-					PTG[i][6]=cID-1
 				end
 			else
+				PTG[i][6]=cID
 				RegisterTGT(PTG[i])
-				PTG[i][6]=cID-1
 			end
 		end
 	end
-	--Target data number check
+	--Delete old targets
 	if #TGT>0 then
 		for k=#TGT,1,-1 do
-			if TGTS[k][4]>MaxHist then
+			if TGT[k].S[4]>HoldTick then
 				tR(TGT,k)
-				tR(TGTS,k)
 			end
 		end
 	end
 	--Taret data output
+	OUT={}
 	for i=1,8 do
 		if PTG[i][5] then
 			ki=-1
 			for k=1,#TGT do
-				if PTG[i][6]==TGTS[k][6] then
+				if PTG[i][6]==TGT[k].ID then
 					ki=k
 					break
 				end
 			end
-			OUT={}
+			OUT[i]={}
 			for j=1,4 do
-				OUT[j]=TGTS[ki][j]
+				OUT[i][j]=TGT[ki].S[j]
 			end
-			OUT[5]=true
+			OUT[i][5]=true
+			OUT[i][6]=#TGT[ki]
 		else
-			OUT={0,0,0,-1,false}
+			OUT[i]={0,0,0,-1,false,-1}
 		end
 		for j=1,4 do
-			oN(i*4-(4-j),OUT[j])
+			oN(i*4-(4-j),OUT[i][j])
 		end
-		oB(i,OUT[5])
+		oB(i,OUT[i][5])
 	end
 	--Target data tick update (only latest data)
 	if #TGT>0 then
 		for k=1,#TGT do
-			TGTS[k][4]=TGTS[k][4]+1
+			TGT[k].S[4]=TGT[k].S[4]+1
 		end
 	end
 
 end
 
 function onDraw()
-	dT(1,1,"---X ".."---Y ".."---Z ")
+	dT(100,0,#TGT)
+
+	dT(0,0,"OUTPUT DATA")
+	dT(0,7,"  ----X ".."----Y ".."----Z ")
 	for i=1,8 do
-		dT(1+0*25,i*8,fo("%4.0f",PTG[i][1]))
-		dT(1+1*25,i*8,fo("%4.0f",PTG[i][2]))
-		dT(1+2*25,i*8,fo("%4.0f",PTG[i][3]))
+		dT(0,7+i*7,i)
+		for j=1,3 do
+			dT(5+(j-1)*30,7+i*7,fo("%6.0f",OUT[i][j]))
+		end
+		dT(100,7+i*7,OUT[i][6])
 	end
 end
