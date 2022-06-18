@@ -243,8 +243,6 @@ function onTick()
 end
 
 function onDraw()
-	dT(100,0,#TGT)
-
 	dT(0,0,"OUTPUT DATA")
 	dT(0,7,"  ----X ".."----Y ".."----Z ")
 	for i=1,8 do
