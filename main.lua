@@ -33,10 +33,10 @@ Marge=property.getBool("Marge close targets")
 DAD=pN("Installation Posture")
 tSm=pN("Smoothing tick")
 MaxHist=tSm+1
-RType=pN("Radar Type")
-if RType==0     then isSR,isTR=true,false
-elseif RType==1 then isSR,isTR=true,true
-elseif RType==2 then isSR,isTR=false,true
+RMode=pN("Radar Mode")
+if RMode==0     then isSR,isTR=true,false
+elseif RMode==1 then isSR,isTR=true,true
+elseif RMode==2 then isSR,isTR=false,true
 end
 if DAD>0 then
 	if DAD==2 then fy=pi/2
@@ -118,8 +118,9 @@ PTG={}
 TGT={}
 
 function onTick()
-	oB(31,isSR)
-	oB(32,isTR)
+	oB(30,isSR)
+	oB(31,isTR)
+	oB(32,true)
 	
 	PO={iN(4),iN(8),iN(12)}
 	QO={iN(16)*pi2,iN(20)*pi2,iN(24)*pi2,iN(28)*pi2}
