@@ -97,7 +97,7 @@ function OrthToPol(VO)
 	VP={}
 	VP[1]=distV(VO,{0,0,0})
 	VP[2]=at(VO[1],VO[2])
-	VP[3]=as(VO[3]/_)
+	VP[3]=as(VO[3]/VP[1])
 	return VP
 end
 function dC2(x,y,r,dn)
