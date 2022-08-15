@@ -136,7 +136,7 @@ function onTick()
 			for j=1,3 do
 				PTL[j]=PTL[j]+pD[j]
 			end
-			PTG[i]=Mv(rs,PTL)
+			PTL=Mv(rs,PTL)
 			PTG[i]=Mv(es,PTL)
 			for j=1,3 do
 				PTG[i][j]=PTG[i][j]+PO[j]
